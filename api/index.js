@@ -23,6 +23,35 @@ const users = [
     }
 ]
 
+let refreshTokens = [];
+
+const generateToken = (user) => jwt.sign({id:user.id, isAdmin:user.isAdmin}, secret, {expiresIn: "15s"})
+const regenerateToken = (user) => jwt.sign({id:user.id, isAdmin:user.isAdmin}, secret+"extra")
+
+app.post('/refresh', (req, res) =>{
+    const refreshToken = req.body.token;
+
+    if(!refreshToken ) return res.status(401).json("You are not authenticated.")
+    if(!refreshTokens.includes(refreshToken)){
+        return res.status(403).json("Refresh token is not valid.")
+    }
+    jwt.verify(refreshToken, secret+"extra", (err, user) => {
+        err && console.log(err);
+        refreshTokens = refreshTokens.filter((token) => token != refreshToken);
+
+        const newAccessToken = generateToken(user);
+        const newRefreshToken = regenerateToken(user);
+
+        refreshTokens.push(newRefreshToken);
+
+        res.status(200).json({
+            accessToken : newAccessToken,
+            refreshToken : newRefreshToken
+        })
+
+    })
+})
+
 app.post("/login", (req, res) =>{
     // res.json("hey it works")
     const {username, password} = req.body;
@@ -32,12 +61,19 @@ app.post("/login", (req, res) =>{
     if(user){
         // res.json(user);
         // Generate access token
-        const accessToken = jwt.sign({id:user.id, isAdmin:user.isAdmin}, secret); //creating access token which has the encrypted data
+        // const accessToken = jwt.sign({id:user.id, isAdmin:user.isAdmin}, secret, {expiresIn: "15s"}); //creating access token which has the encrypted data
+
+        const accessToken = generateToken(user);
+        const refreshToken = regenerateToken(user);
+        refreshTokens.push(refreshToken);
+
         res.json({
-            username : user.username,
-            isAdmin : user.isAdmin,
-            accessToken
-        });
+                username : user.username,
+                isAdmin : user.isAdmin,
+                accessToken,
+                refreshToken
+            });
+
     } else {
         res.status(400).json("Invalid User!");
     }
