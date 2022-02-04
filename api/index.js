@@ -1,7 +1,7 @@
-const express = require('express');
-const app = express();
-const dotenv = require('dotenv');
-dotenv.config();
+const express = require('express'); // import express module
+const app = express(); // create app instance
+const dotenv = require('dotenv'); // import env module
+dotenv.config(); // initialised configuration to read .env and other files
 const secret = process.env.SECRET;
 const port = process.env.PORT || 3000;
 const jwt = require('jsonwebtoken');
