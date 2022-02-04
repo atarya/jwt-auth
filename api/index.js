@@ -28,6 +28,22 @@ let refreshTokens = [];
 const generateToken = (user) => jwt.sign({id:user.id, isAdmin:user.isAdmin}, secret, {expiresIn: "15s"})
 const regenerateToken = (user) => jwt.sign({id:user.id, isAdmin:user.isAdmin}, secret+"extra")
 
+const verify = (req,res,next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader){
+        const token = authHeader.split(" ")[1];
+        jwt.verify(token, secret, (err, body) => {
+            if (err) {
+                return res.status(403).json("Token is not valid!");
+            }
+            req.user = body;
+            next();
+        });
+    } else {
+        res.status(401).json("You are not authorized.")
+    }
+}
+
 app.post('/refresh', (req, res) =>{
     const refreshToken = req.body.token;
 
@@ -79,28 +95,18 @@ app.post("/login", (req, res) =>{
     }
 })
 
-const verify = (req,res,next) => {
-    const authHeader = req.headers.authorization;
-    if (authHeader){
-        const token = authHeader.split(" ")[1];
-        jwt.verify(token, secret, (err, body) => {
-            if (err) {
-                return res.status(403).json("Token is not valid!");
-            }
-            req.user = body;
-            next();
-        });
-    } else {
-        res.status(401).json("You are not authorized.")
-    }
-}
-
 app.delete("/users/:userId", verify, (req, res) =>{
     if (req.user.id === req.params.userId || req.user.isAdmin) {
         res.status(200).json("Deleted successfully")
     } else {
         res.status(403).json("You are not allowed to delete this user.")
     }
+})
+
+app.post('/logout', verify, (req, res) =>{
+    const refreshToken = req.body.token;
+    refreshTokens = refreshTokens.filter(token => token !== refreshToken);
+    res.status(200).json("Logged out successfully.");
 })
 
 app.listen(port, () => console.log("Backend server is running on", port));
