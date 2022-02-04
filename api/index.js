@@ -2,11 +2,11 @@ const express = require('express'); // import express module
 const app = express(); // create app instance
 const dotenv = require('dotenv'); // import env module
 dotenv.config(); // initialised configuration to read .env and other files
-const secret = process.env.SECRET;
-const port = process.env.PORT || 3000;
-const jwt = require('jsonwebtoken');
+const secret = process.env.SECRET; // secret to set token
+const port = process.env.PORT || 3000; // port
+const jwt = require('jsonwebtoken'); // jwt importing 
 
-app.use(express.json());
+app.use(express.json()); // this helps read json files
 
 const users = [
     {
@@ -32,7 +32,7 @@ app.post("/login", (req, res) =>{
     if(user){
         // res.json(user);
         // Generate access token
-        const accessToken = jwt.sign({id:user.id, isAdmin:user.isAdmin}, secret);
+        const accessToken = jwt.sign({id:user.id, isAdmin:user.isAdmin}, secret); //creating access token which has the encrypted data
         res.json({
             username : user.username,
             isAdmin : user.isAdmin,
@@ -40,6 +40,30 @@ app.post("/login", (req, res) =>{
         });
     } else {
         res.status(400).json("Invalid User!");
+    }
+})
+
+const verify = (req,res,next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader){
+        const token = authHeader.split(" ")[1];
+        jwt.verify(token, secret, (err, body) => {
+            if (err) {
+                return res.status(403).json("Token is not valid!");
+            }
+            req.user = body;
+            next();
+        });
+    } else {
+        res.status(401).json("You are not authorized.")
+    }
+}
+
+app.delete("/users/:userId", verify, (req, res) =>{
+    if (req.user.id === req.params.userId || req.user.isAdmin) {
+        res.status(200).json("Deleted successfully")
+    } else {
+        res.status(403).json("You are not allowed to delete this user.")
     }
 })
 
